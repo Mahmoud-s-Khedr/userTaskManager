@@ -1,0 +1,35 @@
+# Ignore compiled binaries
+*.out
+*.exe
+*.o
+*.obj
+
+# Ignore build directories
+/build/
+/bin/
+/Debug/
+/Release/
+
+# Ignore editor and IDE files
+.vscode/
+*.code-workspace
+*.suo
+*.user
+*.ncb
+*.sdf
+*.opendb
+*.VC.db
+
+# Ignore macOS and Linux system files
+.DS_Store
+*.swp
+*.swn
+*.swo
+
+# Ignore log and temporary files
+*.log
+*.tmp
+
+# Ignore task storage file (optional, if you want to keep tasks private)
+tasks.txt
+backup/
