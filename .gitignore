@@ -33,3 +33,4 @@
 # Ignore task storage file (optional, if you want to keep tasks private)
 tasks.txt
 backup/
+data/
