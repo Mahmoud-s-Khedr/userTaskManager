@@ -94,7 +94,7 @@ This project is open-source and available under the MIT License.
 🔹 Due Dates & Overdue Task Highlighting\
 🔹 Task Categories & Tags\
 🔹 Search & Filter Options\
-🔹 Export (JSON/CSV)\
+🔹 Export (JSON/CSV)
 ---
 
 Enjoy your productivity boost with the CLI To-Do List! 🚀
