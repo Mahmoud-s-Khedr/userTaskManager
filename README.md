@@ -54,7 +54,7 @@ Select an option by entering a number.
 
 ## 📂 Data Storage
 
-- Tasks are stored in `/tmp/tasks.db`.
+- Tasks are stored in `./data/tasks.db`.
 - If the file does not exist, it is created automatically.
 - Tasks are saved in **comma-separated format (CSV)**.
 
