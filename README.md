@@ -10,7 +10,7 @@ A simple and efficient **command-line To-Do List application** that allows users
 ✅ **List Tasks** – Display tasks in a well-formatted table.\
 ✅ **Mark as Completed** – Change a task's status to `completed`.\
 ✅ **Delete Tasks** – Remove tasks by their ID.\
-✅ **Persistent Storage** – Saves tasks to `/tmp/tasks.db` and loads them automatically on startup.\
+✅ **Persistent Storage** – Saves tasks to `./data/tasks.db` and loads them automatically on startup.\
 ✅ **User-Friendly CLI** – Simple, interactive menu-based navigation.
 
 ---
