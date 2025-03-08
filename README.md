@@ -1,118 +1,51 @@
-# userTaskManager
+# To-Do List Manager
 
-## Overview
-
-The To-Do List Manager is a command-line application designed to help users manage their tasks and categories efficiently. It allows users to create, update, delete, and view tasks and categories. The application also supports filtering tasks by category, priority, status, and due date. Additionally, users can change their password or delete their account.
+A simple command-line To-Do List application written in C++ with SQLite database support.
 
 ## Features
+- **Task Management**: Add, edit, delete, and list tasks efficiently.
+- **Task Prioritization**: Assign priority levels to tasks for better organization.
+- **Due Dates & Deadlines**: Set due dates to ensure timely completion.
+- **Persistent Storage**: Tasks are stored in an SQLite database, ensuring data is not lost between sessions.
+- **Command-Line Interface (CLI)**: Lightweight and efficient UI for quick task management.
+- **Search & Filter**: Find tasks easily using keyword search or filter by priority and due date.
+- **Backup & Restore**: Supports exporting and importing tasks for data safety.
 
-- **Task Management**:
-  - Add new tasks with title, description, due date, priority, and category.
-  - Mark tasks as completed.
-  - Edit existing tasks.
-  - Remove tasks.
-  - View all tasks.
+## Prerequisites
+Ensure you have the following installed:
+- **G++** (for compiling the C++ code)
+- **SQLite3** (for database support)
 
-- **Category Management**:
-  - Create new categories.
-  - Edit existing categories.
-  - Delete categories.
-  - View all categories.
+## Installation
 
-- **Filtering**:
-  - Filter tasks by category.
-  - Filter tasks by priority (low, medium, high).
-  - Filter tasks by status (todo, completed).
-  - Filter tasks by due date.
+Clone the repository and build the project:
+```sh
+git clone https://github.com/Mahmoud-s-Khedr/userTaskManager.git
+cd userTaskManager
+make
+```
 
-- **User Management**:
-  - User login and registration.
-  - Change password.
-  - Delete account.
+## Usage
 
-## Getting Started
+Run the application:
+```sh
+./userTaskManager
+```
 
-### Prerequisites
+Follow the on-screen instructions to manage tasks.
 
-- **C++ Compiler**: Ensure you have a C++ compiler installed (e.g., `g++`).
-- **SQLite3**: The application uses SQLite3 for database management. Make sure SQLite3 is installed on your system.
-- **OpenSSL**: The application uses OpenSSL for password hashing. Ensure OpenSSL is installed.
-
-### Installation
-
-1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/Mahmoud-s-Khedr/userTaskManager.git
-   cd userTaskManager
-   ```
-
-2. **Compile the Code**:
-   ```bash
-   g++ main.cpp -o userTaskManager -lsqlite3 -lssl -lcrypto
-   ```
-
-3. **Run the Application**:
-   ```bash
-   ./userTaskManager
-   ```
-
-### Usage
-
-1. **Login or Register**:
-   - If you are a new user, register by providing a username, password, and email.
-   - If you already have an account, log in using your credentials.
-
-2. **Main Menu**:
-   - After logging in, you will be presented with a menu of options to manage your tasks and categories.
-   - Follow the on-screen instructions to add, edit, delete, or view tasks and categories.
-
-3. **Exiting the Application**:
-   - To exit the application, select the "Exit" option from the main menu.
-
-## Database Schema
-
-The application uses an SQLite database to store user information, tasks, and categories. The database schema is as follows:
-
-- **users**:
-  - `id`: Primary key, auto-incremented.
-  - `username`: Unique username.
-  - `password`: Hashed password.
-  - `email`: User's email.
-
-- **tags**:
-  - `id`: Primary key, auto-incremented.
-  - `name`: Name of the category.
-  - `description`: Description of the category.
-  - `user_id`: Foreign key referencing the user who created the category.
-
-- **tasks**:
-  - `id`: Primary key, auto-incremented.
-  - `title`: Title of the task.
-  - `description`: Description of the task.
-  - `status`: Status of the task (todo, completed).
-  - `due_date`: Due date of the task.
-  - `user_id`: Foreign key referencing the user who created the task.
-  - `tag_id`: Foreign key referencing the category of the task.
-  - `priority`: Priority of the task (1: low, 2: medium, 3: high).
-
-## Security
-
-- **Password Hashing**: User passwords are hashed using SHA-256 before being stored in the database.
-- **Input Validation**: The application includes basic input validation to prevent common errors.
-
-## Contributing
-
-Contributions are welcome! Please fork the repository and submit a pull request with your changes.
+## File Structure
+```
+userTaskManager-main/
+│── src/
+│   ├── main.cpp       # Main entry point
+│── data/
+│   ├── database.db    # SQLite database file
+│── makefile           # Build script
+│── README.md          # Documentation
+│── LICENSE            # License information
+```
 
 ## License
-
 This project is licensed under the MIT License.
 
-
-## Contact
-
-For any questions or feedback, please contact [mahmoud.s.khedr.2@gmail.com](mailto:mahmoud.s.khedr.2@gmail.com).
-
----
-
-Enjoy managing your tasks with the To-Do List Manager! 🚀
