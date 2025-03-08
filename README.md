@@ -1,4 +1,4 @@
-# To-Do List Manager
+# userTaskManager
 
 A simple command-line To-Do List application written in C++ with SQLite database support.
 
