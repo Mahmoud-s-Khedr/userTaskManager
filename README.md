@@ -1,101 +1,118 @@
-# 📌userTaskManager 
+# userTaskManager
 
-A simple and efficient **command-line To-Do List application** that allows users to manage tasks easily. Tasks are stored in a file inside the `./data` directory, ensuring data persistence between sessions.
+## Overview
+
+The To-Do List Manager is a command-line application designed to help users manage their tasks and categories efficiently. It allows users to create, update, delete, and view tasks and categories. The application also supports filtering tasks by category, priority, status, and due date. Additionally, users can change their password or delete their account.
+
+## Features
+
+- **Task Management**:
+  - Add new tasks with title, description, due date, priority, and category.
+  - Mark tasks as completed.
+  - Edit existing tasks.
+  - Remove tasks.
+  - View all tasks.
+
+- **Category Management**:
+  - Create new categories.
+  - Edit existing categories.
+  - Delete categories.
+  - View all categories.
+
+- **Filtering**:
+  - Filter tasks by category.
+  - Filter tasks by priority (low, medium, high).
+  - Filter tasks by status (todo, completed).
+  - Filter tasks by due date.
+
+- **User Management**:
+  - User login and registration.
+  - Change password.
+  - Delete account.
+
+## Getting Started
+
+### Prerequisites
+
+- **C++ Compiler**: Ensure you have a C++ compiler installed (e.g., `g++`).
+- **SQLite3**: The application uses SQLite3 for database management. Make sure SQLite3 is installed on your system.
+- **OpenSSL**: The application uses OpenSSL for password hashing. Ensure OpenSSL is installed.
+
+### Installation
+
+1. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/Mahmoud-s-Khedr/userTaskManager.git
+   cd userTaskManager
+   ```
+
+2. **Compile the Code**:
+   ```bash
+   g++ main.cpp -o userTaskManager -lsqlite3 -lssl -lcrypto
+   ```
+
+3. **Run the Application**:
+   ```bash
+   ./userTaskManager
+   ```
+
+### Usage
+
+1. **Login or Register**:
+   - If you are a new user, register by providing a username, password, and email.
+   - If you already have an account, log in using your credentials.
+
+2. **Main Menu**:
+   - After logging in, you will be presented with a menu of options to manage your tasks and categories.
+   - Follow the on-screen instructions to add, edit, delete, or view tasks and categories.
+
+3. **Exiting the Application**:
+   - To exit the application, select the "Exit" option from the main menu.
+
+## Database Schema
+
+The application uses an SQLite database to store user information, tasks, and categories. The database schema is as follows:
+
+- **users**:
+  - `id`: Primary key, auto-incremented.
+  - `username`: Unique username.
+  - `password`: Hashed password.
+  - `email`: User's email.
+
+- **tags**:
+  - `id`: Primary key, auto-incremented.
+  - `name`: Name of the category.
+  - `description`: Description of the category.
+  - `user_id`: Foreign key referencing the user who created the category.
+
+- **tasks**:
+  - `id`: Primary key, auto-incremented.
+  - `title`: Title of the task.
+  - `description`: Description of the task.
+  - `status`: Status of the task (todo, completed).
+  - `due_date`: Due date of the task.
+  - `user_id`: Foreign key referencing the user who created the task.
+  - `tag_id`: Foreign key referencing the category of the task.
+  - `priority`: Priority of the task (1: low, 2: medium, 3: high).
+
+## Security
+
+- **Password Hashing**: User passwords are hashed using SHA-256 before being stored in the database.
+- **Input Validation**: The application includes basic input validation to prevent common errors.
+
+## Contributing
+
+Contributions are welcome! Please fork the repository and submit a pull request with your changes.
+
+## License
+
+This project is licensed under the MIT License.
+
+
+## Contact
+
+For any questions or feedback, please contact [mahmoud.s.khedr.2@gmail.com](mailto:mahmoud.s.khedr.2@gmail.com).
 
 ---
 
-## 🚀 Features
-
-✅ **Add Tasks** – Create tasks with a title and description.\
-✅ **List Tasks** – Display tasks in a well-formatted table.\
-✅ **Mark as Completed** – Change a task's status to `completed`.\
-✅ **Delete Tasks** – Remove tasks by their ID.\
-✅ **Persistent Storage** – Saves tasks to `./data/tasks.db` and loads them automatically on startup.\
-✅ **User-Friendly CLI** – Simple, interactive menu-based navigation.
-
----
-
-## 🛠 Installation & Usage
-
-### **1️⃣ Build the Application**
-
-Compile the C++ program using `g++`:
-
-```sh
- g++ todo.cpp -o todo
-```
-
-### **2️⃣ Run the Application**
-
-```sh
- ./todo
-```
-
-### **3️⃣ Follow the CLI Menu**
-
-Once you run the program, you will see the following menu:
-
-```
-=============================
-📌  TO-DO LIST MANAGER
-=============================
-1️⃣  Add a Task
-2️⃣  List Tasks
-3️⃣  Mark Task as Completed
-4️⃣  Delete a Task
-5️⃣  Exit
-=============================
-Enter your choice:
-```
-
-Select an option by entering a number.
-
----
-
-## 📂 Data Storage
-
-- Tasks are stored in `./data/tasks.db`.
-- If the file does not exist, it is created automatically.
-- Tasks are saved in **comma-separated format (CSV)**.
-
----
-
-## 🖥 Sample Output
-
-```sh
-=============================
-📌  TO-DO LIST MANAGER
-=============================
-1️⃣  Add a Task
-2️⃣  List Tasks
-3️⃣  Mark Task as Completed
-4️⃣  Delete a Task
-5️⃣  Exit
-=============================
-Enter your choice: 2
-
-ID    Title                        Description                                  Status      
---------------------------------------------------------------------------------
-1     Learn C++                    Complete STL tutorials                      todo        
-2     Build CLI To-Do List         Implement task manager in C++               completed   
-```
-
----
-
-## 📝 License
-
-This project is open-source and available under the MIT License.
-
----
-
-## 📌 Future Enhancements (waiting...)
-
-🔹 Task Prioritization (Low, Medium, High)\
-🔹 Due Dates & Overdue Task Highlighting\
-🔹 Task Categories & Tags\
-🔹 Search & Filter Options\
-🔹 Export (JSON/CSV)
----
-
-Enjoy your productivity boost with the CLI To-Do List! 🚀
-
+Enjoy managing your tasks with the To-Do List Manager! 🚀

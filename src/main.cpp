@@ -1,246 +1,534 @@
-#include<iostream>
-#include<string>
-#include<vector>
-#include<fstream>
-#include<iomanip>
-#include<filesystem>
-#include<limits>
-#include<sstream>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <fstream>
+#include <sqlite3.h>
+#include <iomanip>
+#include <filesystem>
+#include <limits>
 
 const std::string filePath = "./data/";
-const std::string fileName = "tasks.db";
+const std::string fileName = "database.db";
+sqlite3 *db;
 
-
-class todoTask{
-private:
-    static int counter;
-    int id;
-    std::string name;
-    std::string description;
-    std::string status;
-
-    std::vector<std::string> split(std::string str, char delimiter) {
-        std::vector<std::string> internal;
-        std::stringstream ss(str);
-        std::string tok;
-
-        while(getline(ss, tok, delimiter)) {
-            internal.push_back(tok);
-        }
-        return internal;
+void executeQuery(const std::string &query){
+    char *zErrMsg = 0;
+    int rc = sqlite3_exec(db, query.c_str(), 0, 0, &zErrMsg);
+    if (rc != SQLITE_OK)
+    {
+        std::cerr << "SQL error: " << zErrMsg << std::endl;
+        sqlite3_free(zErrMsg);
     }
-public:
-    todoTask(std::string line){
-        std::vector<std::string> data = split(line, ',');
-        if(data.size() == 4) {
-            this->id = std::stoi(data[0]);
-            this->name = data[1];
-            this->description = data[2];
-            this->status = data[3];
-        }
-    }
-
-    todoTask(std::string name, std::string description){
-        this->id = counter++;
-        this->name = name;
-        this->description = description;
-        this->status = "todo";
-    }
-
-    void changeStatus(std::string status){
-        this->status = status;
-    }
-
-    std::vector<std::string> getTaskData() const {
-        return { std::to_string(this->id), this->name, this->description, this->status };
-    }
-
-    std::string toString() const {
-        return std::to_string(this->id) + "," + this->name + "," + this->description + "," + this->status + "\n";
-    }
-
-    int getId() const {
-        return this->id;
-    }
-    
-    std::string getStatus() const {
-        return this->status;
-    }
-    
-    static void setCounter(int newCounter) {
-        counter = newCounter;
-    }
-};
-
-int todoTask::counter = 0;
-
-class taskManager {
-private:
-    std::vector<todoTask> tasks;
-
-int find(std::vector<todoTask> tasks, int id){
-    for (int i = 0; i < tasks.size(); i++){
-        if (tasks[i].getId() == id) return i;
-    }
-    return -1;
 }
 
-public:
-    taskManager(std::string filePath, std::string fileName){
-        if (!std::filesystem::exists(filePath)) {
-            std::filesystem::create_directory(filePath);
+std::vector<std::vector<std::string>> executeQueryWithResult(const std::string &query){
+    std::vector<std::vector<std::string>> result;
+    char *zErrMsg = 0;
+    sqlite3_stmt *stmt;
+    int rc = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, 0);
+    if (rc == SQLITE_OK)
+    {
+        while ((rc = sqlite3_step(stmt)) == SQLITE_ROW)
+        {
+            std::vector<std::string> row;
+            for (int i = 0; i < sqlite3_column_count(stmt); i++)
+            {
+                if(sqlite3_column_type(stmt, i) == SQLITE_TEXT){
+                    row.push_back(reinterpret_cast<const char*>(sqlite3_column_text(stmt, i)));
+                }
+                else if(sqlite3_column_type(stmt, i) == SQLITE_INTEGER){
+                    row.push_back(std::to_string(sqlite3_column_int(stmt, i)));
+                }else{
+                    row.push_back("NULL");
+                }
+            }
+            result.push_back(row);
         }
-        std::ifstream file(filePath + fileName);
-        if (file.is_open()) {
-            loadFromFile(filePath + fileName);
-        } else {
-            std::ofstream createfile(filePath + fileName);
-            createfile.close();
-        }
+        sqlite3_finalize(stmt);
+    }
+    else
+    {
+        std::cerr << "SQL error: " << sqlite3_errmsg(db) << std::endl;
+    }
+    return result;
+}
+
+void initDatabase(){
+    // Create the directory if it doesn't exist
+    if (!std::filesystem::exists(filePath))
+    {
+        std::filesystem::create_directory(filePath);
+    }
+    //open the database
+    if(sqlite3_open((filePath + fileName).c_str(), &db) != SQLITE_OK)
+    {
+        std::cerr << "Error opening database: " << sqlite3_errmsg(db) << std::endl;
+        sqlite3_close(db);
+        exit(EXIT_FAILURE);
+    }
+    
+    //create tags table if it doesn't exist
+    std::string sql = "CREATE TABLE IF NOT EXISTS tags (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)";
+    executeQuery(sql);
+    //create tasks table if it doesn't exist
+    sql = "CREATE TABLE IF NOT EXISTS tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, status TEXT, due_date TEXT, tag_id INTEGER, priority INTEGER)";
+    executeQuery(sql);
+    //create tasks table indexs if it doesn't exist
+    sql = "CREATE INDEX IF NOT EXISTS idx_tasks_tag_id ON tasks (tag_id)";
+    executeQuery(sql);
+    sql = "CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks (priority)";
+    executeQuery(sql);
+    sql = "CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks (status)";
+    executeQuery(sql);
+    sql = "CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks (due_date)";
+    executeQuery(sql);
+
+}
+
+void exitRoutine(){
+    sqlite3_close(db);
+    std::cout << "Goodbye!\n";
+    exit(EXIT_SUCCESS);
+}
+
+void tasksViewer(std::vector<std::vector<std::string>> result) {
+    // Column widths
+    const int ID_WIDTH = 5;
+    const int TITLE_WIDTH = 20;
+    const int DESC_WIDTH = 30;
+    const int STATUS_WIDTH = 10;
+    const int DATE_WIDTH = 15;
+    const int PRIORITY_WIDTH = 10;
+    const int TAG_WIDTH = 15;
+
+    // Print table header
+    std::cout << "+-----+--------------------+--------------------------------+------------+---------------+------------+---------------+\n";
+    std::cout << "| ID  | Title              | Description                    | Status     | Due Date      | Priority   | Tag           |\n";
+    std::cout << "+-----+--------------------+--------------------------------+------------+---------------+------------+---------------+\n";
+
+    // Print table rows
+    for (const auto &row : result) {
+        std::cout << "| " << std::left << std::setw(ID_WIDTH) << row[0]
+             << "| " << std::left << std::setw(TITLE_WIDTH) << row[1]
+             << "| " << std::left << std::setw(DESC_WIDTH) << row[2]
+             << "| " << std::left << std::setw(STATUS_WIDTH) << row[3]
+             << "| " << std::left << std::setw(DATE_WIDTH) << row[4]
+             << "| " << std::left << std::setw(PRIORITY_WIDTH) << row[5]
+             << "| " << std::left << std::setw(TAG_WIDTH) << row[6] << "|\n";
     }
 
-    void addTask(todoTask task){
-        tasks.push_back(task);
-        saveToFile(filePath + fileName);
+    // Print table footer
+    std::cout << "+-----+--------------------+--------------------------------+------------+---------------+------------+---------------+\n";
+}
+
+void addTask(){
+    std::string title, description, due_date, priority,tag_id;
+    std::string insert = "INSERT INTO tasks ";
+    std::string values = "VALUES (";
+    std::cout << "Enter task title: ";
+    std::getline(std::cin, title);
+    if(title.empty()){
+        std::cout << "Task title cannot be empty.\n";
+        return;
     }
+    std::cout << "Enter task description: ";
+    std::getline(std::cin, description);
 
-    void removeTask(int id){
-        
-        int pos = find(tasks, id);
+    std::cout << "Enter task due date (YYYY-MM-DD): ";
+    std::getline(std::cin, due_date);
 
-        if (pos != -1) {
-            tasks.erase(tasks.begin() + pos);
-            saveToFile(filePath + fileName);
-            std::cout << "🗑️ Task deleted successfully!\n";
-        } else {
-            std::cout << "❌ Task not found!\n";
+    std::cout << "Enter task priority (1: low, 2: medium, 3: high): ";
+    std::getline(std::cin, priority);
+
+    std::cout << "Enter task tag id: ";
+    std::getline(std::cin, tag_id);
+
+    if(!title.empty()){
+        values += "'" + title + "'";
+        insert += " (title";
+    }
+    //add default values to status todo
+    values += ", 'todo'";
+    insert += ", status";
+    if(!description.empty()){
+        values += ", '" + description + "'";
+        insert += ", description";
+    }
+    if(!due_date.empty()){
+        values += ", '" + due_date + "'";
+        insert += ", due_date";
+    }
+    if(!priority.empty()){
+        values += ", " + priority;
+        insert += ", priority";
+    }
+    if(!tag_id.empty()){
+        values += ", " + tag_id;
+        insert += ", tag_id";
+    }
+    values += ")";
+    insert += ")";
+
+
+    std::string sql = insert + values;
+    executeQuery(sql);
+    std::cout << "Task added successfully!\n";
+}
+
+
+void removeTask(){
+    std::string id;
+    std::cout << "Enter task id: ";
+    std::getline(std::cin, id);
+    if(id.empty()){
+        std::cout << "Task id cannot be empty.\n";
+        return;
+    }
+    std::string sql = "DELETE FROM tasks WHERE id = " + id;
+    executeQuery(sql);
+    std::cout << "Task removed successfully!\n";
+}
+
+void markTaskAsCompleted(){
+    std::string id;
+    std::cout << "Enter task id: ";
+    std::getline(std::cin, id);
+    if(id.empty()){
+        std::cout << "Task id cannot be empty.\n";
+        return;
+    }
+    std::string sql = "UPDATE tasks SET status = 'completed' WHERE id = " + id;
+    executeQuery(sql);
+    std::cout << "Task marked as completed successfully!\n";
+}
+
+std::vector<std::vector<std::string>> viewTasks(){
+    std::string sql = "SELECT tasks.id, tasks.title, tasks.description, tasks.status, tasks.due_date, tasks.priority, tags.name FROM tasks LEFT JOIN tags ON tasks.tag_id = tags.id";
+    std::vector<std::vector<std::string>> result = executeQueryWithResult(sql);
+    if (result.empty())
+    {
+        std::cout << "No tasks found.\n";
+    }
+    return result;
+}
+
+void editTask(){
+    std::string id;
+    std::cout << "Enter task id: ";
+    std::getline(std::cin, id);
+    if(id.empty()){
+        std::cout << "Task id cannot be empty.\n";
+        return;
+    }
+    std::string title, description, due_date, priority,tag_id,sql;
+    std::cout << "Enter task title: ";
+    std::getline(std::cin, title);
+    if(!title.empty()){
+        sql = "UPDATE tasks SET title = '" + title + "' WHERE id = " + id;
+        executeQuery(sql);
+    }
+    std::cout << "Enter task description: ";
+    std::getline(std::cin, description);
+    if(!description.empty()){
+        sql = "UPDATE tasks SET description = '" + description + "' WHERE id = " + id;
+        executeQuery(sql);
+    }
+    std::cout << "Enter task due date (YYYY-MM-DD): ";
+    std::getline(std::cin, due_date);
+    if(!due_date.empty()){
+        sql = "UPDATE tasks SET due_date = '" + due_date + "' WHERE id = " + id;
+        executeQuery(sql);
+    }
+    std::cout << "Enter task priority (1: low, 2: medium, 3: high): ";
+    std::getline(std::cin, priority);
+    if(!priority.empty()){
+        sql = "UPDATE tasks SET priority = " + priority + " WHERE id = " + id;
+        executeQuery(sql);
+    }
+    std::cout << "Enter task tag id: ";
+    std::getline(std::cin, tag_id);//more tag checking todos
+
+    if(!tag_id.empty()){
+        sql = "UPDATE tasks SET tag_id = " + tag_id + " WHERE id = " + id;
+        executeQuery(sql);
+    }
+    std::cout << "Task edited successfully!\n";
+
+}
+
+void makeCategory(){
+    std::string name;
+    std::cout << "Enter category name: ";
+    std::getline(std::cin, name);
+    if(name.empty()){
+        std::cout << "Category name cannot be empty.\n";
+        return;
+    }
+    std::string sql = "INSERT INTO tags (name) VALUES ('" + name + "')";
+    executeQuery(sql);
+    std::cout << "Category added successfully!\n";
+}
+
+void deleteCategory(){
+    std::string id;
+    std::cout << "Enter category id: ";
+    std::getline(std::cin, id);
+    if(id.empty()){
+        std::cout << "Category id cannot be empty.\n";
+        return;
+    }
+    std::string sql = "DELETE FROM tags WHERE id = " + id;
+    executeQuery(sql);
+    std::cout << "Category deleted successfully!\n";
+}
+
+void viewCategories(){
+    std::string sql = "SELECT * FROM tags";
+    std::vector<std::vector<std::string>> result = executeQueryWithResult(sql);
+    if (result.empty())
+    {
+        std::cout << "No categories found.\n";
+    }
+    else
+    {
+        //view the categories in a table format
+        std::cout << "\n";
+        std::cout << "ID\tName\n";
+        for (const auto &row : result)
+        {
+            std::cout << row[0] << "\t" << row[1] << "\n";
         }
     }
+}
 
-    void changeStatus(int id, std::string status){
-        int pos = find(tasks, id);
-        if (pos != -1) {
-            tasks[pos].changeStatus(status);
-            saveToFile(filePath + fileName);
-            std::cout << "✅ Task updated successfully!\n";
-        } else {
-            std::cout << "❌ Task not found!\n";
-        }
+void editCategory(){
+    std::string id;
+    std::cout << "Enter category id: ";
+    std::getline(std::cin, id);
+    if(id.empty()){
+        std::cout << "Category id cannot be empty.\n";
+        return;
     }
-
-    void printTasks(){
-        if (tasks.empty()) {
-            std::cout << "📂 No tasks available.\n";
-            return;
-        }
-
-        std::cout << "\n"
-             << std::setw(5)  << std::left << "ID" 
-             << std::setw(30) << std::left << "Title"
-             << std::setw(50) << std::left << "Description"
-             << std::setw(12) << std::left << "Status"
-             << "\n";
-        std::cout << std::string(100, '-') << "\n";
-
-        for (const auto& task : tasks) {
-            auto taskData = task.getTaskData();
-            std::cout << std::setw(5)  << std::left << taskData[0] 
-                     << std::setw(30) << std::left << taskData[1]
-                     << std::setw(50) << std::left << taskData[2]
-                     << std::setw(12) << std::left << taskData[3]
-                     << "\n";
-        }
+    std::string name;
+    std::cout << "Enter category name: ";
+    std::getline(std::cin, name);
+    if(name.empty()){
+        std::cout << "Category name cannot be empty.\n";
+        return;
     }
+    std::string sql = "UPDATE tags SET name = '" + name + "' WHERE id = " + id;
+    executeQuery(sql);
+    std::cout << "Category edited successfully!\n";
+}
 
-    void saveToFile(std::string filePath){
-        std::ofstream file(filePath);
-        if (!file.is_open()) {
-            std::cout << "❌ Error saving tasks!\n";
-            return;
-        }
-        for (const auto& task : tasks) {
-            file << task.toString();
-        }
-        file.close();
+std::vector<std::vector<std::string>> getTasksByCategory(){
+    std::string id;
+    std::cout << "Enter category id: ";
+    std::getline(std::cin, id);
+    if(id.empty()){
+        std::cout << "Category id cannot be empty.\n";
+        return {};
     }
+    std::string sql = "SELECT tasks.id, tasks.title, tasks.description, tasks.status, tasks.due_date, tasks.priority, tags.name FROM tasks LEFT JOIN tags ON tasks.tag_id = tags.id WHERE tasks.tag_id = " + id;
+    return executeQueryWithResult(sql);
+}
 
-    void loadFromFile(std::string filePath){
-        std::ifstream file(filePath);
-        if (!file.is_open()) return;
-
-        std::string line;
-        int maxId = 0;
-        while (std::getline(file, line)){
-            todoTask task(line);
-            tasks.push_back(task);
-            if (task.getId() > maxId) maxId = task.getId();
-        }
-        file.close();
-        todoTask::setCounter(maxId + 1);
+std::vector<std::vector<std::string>> getTasksByPriority(){
+    std::string priority;
+    std::cout << "Enter priority (1: low, 2: medium, 3: high): ";
+    std::getline(std::cin, priority);
+    if(priority.empty()){
+        std::cout << "Priority cannot be empty.\n";
+        return {};
     }
-};
+    std::string sql = "SELECT tasks.id, tasks.title, tasks.description, tasks.status, tasks.due_date, tasks.priority, tags.name FROM tasks LEFT JOIN tags ON tasks.tag_id = tags.id WHERE tasks.priority = " + priority;
+    return executeQueryWithResult(sql);
+}
+
+std::vector<std::vector<std::string>> getTasksByStatus(){
+    std::string status;
+    std::cout << "Enter status (todo, completed): ";
+    std::getline(std::cin, status);
+    if(status.empty()){
+        std::cout << "Status cannot be empty.\n";
+        return {};
+    }
+    std::string sql = "SELECT tasks.id, tasks.title, tasks.description, tasks.status, tasks.due_date, tasks.priority, tags.name FROM tasks LEFT JOIN tags ON tasks.tag_id = tags.id WHERE tasks.status = '" + status + "'";
+    return executeQueryWithResult(sql);
+}
+
+std::vector<std::vector<std::string>> getTasksByDueDate(){
+    std::string due_date;
+    std::cout << "Enter due date (YYYY-MM-DD): ";
+    std::getline(std::cin, due_date);
+    if(due_date.empty()){
+        std::cout << "Due date cannot be empty.\n";
+        return {};
+    }
+    std::string sql = "SELECT tasks.id, tasks.title, tasks.description, tasks.status, tasks.due_date, tasks.priority, tags.name FROM tasks LEFT JOIN tags ON tasks.tag_id = tags.id WHERE tasks.due_date = '" + due_date + "'";
+    return executeQueryWithResult(sql);
+}
+
+void exportToCSV(){
+    std::string sql = "SELECT tasks.id, tasks.title, tasks.description, tasks.status, tasks.due_date, tasks.priority, tags.name FROM tasks LEFT JOIN tags ON tasks.tag_id = tags.id";
+    std::vector<std::vector<std::string>> result = executeQueryWithResult(sql);
+    if (result.empty())
+    {
+        std::cout << "No tasks found.\n";
+    }
+    else
+    {
+        std::ofstream file("tasks.csv");
+        file << "ID,Title,Description,Status,Due Date,Priority,Category\n";
+        for (const auto &row : result)
+        {
+            file << row[0] << "," << row[1] << "," << row[2] << "," << row[3] << "," << row[4] << "," << row[5] << "," << row[6] << "\n";
+        }
+        std::cout << "Tasks exported to tasks.csv successfully!\n";
+    }
+}
+
+void exportToJSON(){
+    std::string sql = "SELECT tasks.id, tasks.title, tasks.description, tasks.status, tasks.due_date, tasks.priority, tags.name FROM tasks LEFT JOIN tags ON tasks.tag_id = tags.id";
+    std::vector<std::vector<std::string>> result = executeQueryWithResult(sql);
+    if (result.empty())
+    {
+        std::cout << "No tasks found.\n";
+    }
+    else
+    {
+        std::ofstream file("tasks.json");
+        file << "[\n";
+        for (const auto &row : result)
+        {
+            file << "  {\n";
+            file << "    \"id\": " << row[0] << ",\n";
+            file << "    \"title\": \"" << row[1] << "\",\n";
+            file << "    \"description\": \"" << row[2] << "\",\n";
+            file << "    \"status\": \"" << row[3] << "\",\n";
+            file << "    \"due_date\": \"" << row[4] << "\",\n";
+            file << "    \"priority\": " << row[5] << ",\n";
+            file << "    \"category\": \"" << row[6] << "\"\n";
+            file << "  },\n";
+        }
+        file.seekp(-2, std::ios_base::end);
+        file << "\n]";
+        std::cout << "Tasks exported to tasks.json successfully!\n";
+    }
+}
 
 // Display the menu
-void showMenu() {
+void showMenu(){
     std::cout << "\n=============================\n";
     std::cout << "📌  TO-DO LIST MANAGER\n";
     std::cout << "=============================\n";
-    std::cout << "1️⃣  Add a Task\n";
-    std::cout << "2️⃣  List Tasks\n";
-    std::cout << "3️⃣  Mark Task as Completed\n";
-    std::cout << "4️⃣  Delete a Task\n";
-    std::cout << "5️⃣  Exit\n";
+    std::cout << "1.  Add Task\n";
+    std::cout << "2.  Remove Task\n";
+    std::cout << "3.  mark task as completed\n";
+    std::cout << "4.  View Tasks\n";
+    std::cout << "5.  edit task\n";
+    std::cout << "6.  make a new category\n";
+    std::cout << "7.  delete category\n";
+    std::cout << "8.  view categories\n";
+    std::cout << "9.  edit category\n";
+    std::cout << "10. get task by category\n";
+    std::cout << "11. get task by priority\n";
+    std::cout << "12. get task by status\n";
+    std::cout << "13. get task by due date\n";
+    std::cout << "14. export to csv\n";
+    std::cout << "15. export to json\n";
+    std::cout << "16. Exit\n";
     std::cout << "=============================\n";
     std::cout << "Enter your choice: ";
 }
 
-int main() {
-    taskManager manager(filePath, fileName);
-    int choice;
+void clearScreen(){
+    std::cout << "\033[2J\033[1;1H";
+}
 
-    while (true) {
+void mainLoop(){
+    std::string choice;
+    while (true){
         showMenu();
-        std::cin >> choice;
-
-        if (std::cin.fail()) {
-            std::cin.clear();
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            std::cout << "❌ Invalid input! Please enter a number.\n";
-            continue;
+        std::getline(std::cin, choice);
+        if (choice == "1"){
+            // Add task
+            addTask();
         }
-
-        if (choice == 1) {
-            std::string name, description;
-            std::cout << "Enter task name: ";
-            std::cin.ignore();
-            std::getline(std::cin, name);
-            std::cout << "Enter task description: ";
-            std::getline(std::cin, description);
-            manager.addTask(todoTask(name, description));
-        } 
-        else if (choice == 2) {
-            manager.printTasks();
-        } 
-        else if (choice == 3) {
-            int id;
-            std::cout << "Enter task ID: ";
-            std::cin >> id;
-            manager.changeStatus(id, "completed");
-        } 
-        else if (choice == 4) {
-            int id;
-            std::cout << "Enter task ID: ";
-            std::cin >> id;
-            manager.removeTask(id);
-        } 
-        else if (choice == 5) {
-            std::cout << "👋 Exiting... Goodbye!\n";
+        else if (choice == "2"){
+            // Remove task
+            removeTask();
+        }
+        else if (choice == "3"){
+            // mark task as completed
+            markTaskAsCompleted();
+        }
+        else if (choice == "4"){
+            // View tasks
+            tasksViewer(viewTasks());
+        }
+        else if (choice == "5"){
+            // edit task
+            editTask();
+        }
+        else if (choice == "6"){
+            // make a new category
+            makeCategory();
+        }
+        else if (choice == "7"){
+            // delete category
+            deleteCategory();
+        }
+        else if (choice == "8"){
+            // view categories
+            viewCategories();
+        }
+        else if (choice == "9"){
+            // edit category
+            editCategory();
+        }
+        else if (choice == "10"){
+            // get task by category
+            tasksViewer(getTasksByCategory());
+        }
+        else if (choice == "11"){
+            // get task by priority
+            tasksViewer(getTasksByPriority());
+        }
+        else if (choice == "12"){
+            // get task by status
+            tasksViewer(getTasksByStatus());
+        }
+        else if (choice == "13"){
+            // get task by due date
+            tasksViewer(getTasksByDueDate());
+        }
+        else if (choice == "14"){
+            // export to csv
+            exportToCSV();
+        }else if (choice == "15"){
+            // export to json
+            exportToJSON();
+        }
+        else if (choice == "16"){
+            // Exit
+            exitRoutine();
             break;
-        } 
-        else {
-            std::cout << "❌ Invalid choice! Please try again.\n";
         }
+        else{
+            std::cout << "Invalid choice. Please try again the input a number between 1 and 16.\n";
+        }
+        getchar();
+        clearScreen();
     }
+}
+
+int main()
+{
+    initDatabase();
+    std::cout << "Welcome to your To-Do List Manager!\n";
+
+    mainLoop();
 
     return 0;
 }
